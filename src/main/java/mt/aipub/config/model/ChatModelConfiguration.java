@@ -23,10 +23,10 @@ public class ChatModelConfiguration {
 
     @Bean
     public ChatLanguageModel qwenChatModel() {
-        return QwenChatModel.builder()
-                .apiKey(QWEN_API_KEY)
+        return OpenAiChatModel.builder()
                 .baseUrl("https://dashscope.aliyuncs.com/compatible-mode/v1")
-                .modelName("qwen-max")
+                .apiKey(QWEN_API_KEY)
+                .modelName("qwen-plus-latest")
                 .build();
     }
 

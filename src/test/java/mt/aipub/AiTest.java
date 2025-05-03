@@ -25,7 +25,7 @@ public class AiTest {
     @Test
     public void test() {
         Waiter waiter = AiServices.builder(Waiter.class)
-                .chatLanguageModel(demoChatModel)
+                .chatLanguageModel(qwenChatModel)
                 .chatMemoryProvider(waiterChatMemoryProvider)
                 .build();
         System.out.println(waiter.chat("1", "你好"));

@@ -6,10 +6,7 @@ import mt.aipub.entity.ChatRequest;
 import mt.aipub.entity.ChatResponse;
 import mt.aipub.service.WaiterChatService;
 import org.apache.catalina.connector.Response;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Objects;
 
@@ -19,7 +16,7 @@ public class ChatController {
 
     @Resource
     private WaiterChatService waiterChatService;
-    @PostMapping("/waiter")
+    @PostMapping("/waiter/chat")
     public ChatResponse<String> chat(@RequestBody ChatRequest chatRequest) {
         if (Objects.isNull(chatRequest)) {
             return ChatResponse.error("参数为空！");
@@ -30,5 +27,18 @@ public class ChatController {
             return ChatResponse.error("对话错误！", e.getMessage());
         }
     }
+    @DeleteMapping("/waiter/clear")
+    public ChatResponse<String> clear(@RequestParam String memoryId) {
+        if (Objects.isNull(memoryId)) {
+            return ChatResponse.error("要清除的ID为空！");
+        }
+        try {
+            waiterChatService.clearMemory(memoryId);
+            return ChatResponse.success("清除成功！");
+        } catch (Exception e) {
+            return ChatResponse.error("清除失败！", e.getMessage());
+        }
+    }
+
 
 }

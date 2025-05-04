@@ -26,4 +26,12 @@ public class WaiterChatServiceImpl implements WaiterChatService {
         return ChatResponse.success(chatResult);
     }
 
+    @Override
+    public void clearMemory(String memoryId) {
+        if (Objects.isNull(memoryId)) {
+            return;
+        }
+        waiter.clearMemory(memoryId);
+    }
+
 }

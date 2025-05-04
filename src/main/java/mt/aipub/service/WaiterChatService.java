@@ -6,4 +6,5 @@ public interface WaiterChatService {
 
     ChatResponse<String> chatById(String memoryId, String message);
 
+    void clearMemory(String memoryId);
 }

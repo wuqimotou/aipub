@@ -8,9 +8,9 @@ import dev.langchain4j.service.spring.AiService;
 
 public interface Waiter {
 
-    @SystemMessage("You are a helpful assistant.")
-    String chat(@MemoryId Object memoryId, @UserMessage String message);
 
-//    String chat(String message);
+    String chat(Object memoryId, String message);
+
+    void clearMemory(Object memoryId);
 
 }

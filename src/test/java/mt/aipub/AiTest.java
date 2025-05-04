@@ -2,7 +2,7 @@ package mt.aipub;
 
 import dev.langchain4j.community.model.dashscope.QwenChatModel;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -15,21 +15,17 @@ import org.springframework.boot.test.context.SpringBootTest;
 public class AiTest {
 
     @Resource
-    private ChatLanguageModel qwenChatModel;
+    private ChatModel qwenChatModel;
     @Resource
-    private ChatLanguageModel demoChatModel;
+    private ChatModel demoChatModel;
     @Resource
     private ChatMemoryProvider waiterChatMemoryProvider;
+    @Resource Waiter waiter;
 
 
     @Test
     public void test() {
-        Waiter waiter = AiServices.builder(Waiter.class)
-                .chatLanguageModel(qwenChatModel)
-                .chatMemoryProvider(waiterChatMemoryProvider)
-                .build();
         System.out.println(waiter.chat("1", "你好"));
-
     }
 
 }

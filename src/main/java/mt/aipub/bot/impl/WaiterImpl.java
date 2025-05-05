@@ -8,19 +8,28 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import jakarta.annotation.Resource;
+import lombok.AllArgsConstructor;
 import mt.aipub.bot.Waiter;
 import org.springframework.core.io.ClassPathResource;
+import reactor.core.publisher.Flux;
 
 import java.util.Collections;
 import java.util.List;
 
+
 public class WaiterImpl implements Waiter {
 
     private ChatMemoryProvider chatMemoryProvider;
+
     private ChatModel chatModel;
+
+    private StreamingChatModel streamingChatModel;
+
     private static final String SystemPrompt;
 
     /***
@@ -34,10 +43,10 @@ public class WaiterImpl implements Waiter {
             throw new RuntimeException(e);
         }
     }
-
-    public WaiterImpl(ChatMemoryProvider chatMemoryProvider, ChatModel chatModel) {
+    public WaiterImpl(ChatMemoryProvider chatMemoryProvider, ChatModel chatModel, StreamingChatModel streamingChatModel) {
         this.chatMemoryProvider = chatMemoryProvider;
         this.chatModel = chatModel;
+        this.streamingChatModel = streamingChatModel;
     }
 
     /***
@@ -63,6 +72,47 @@ public class WaiterImpl implements Waiter {
         //todo 处理tool调用
         return aiMessage.text();
     }
+
+    /***
+     * 流式聊天
+     * @param memoryId
+     * @param message
+     * @return
+     */
+    @Override
+    public Flux<String> streamChat(Object memoryId, String message) {
+        ChatMemory  chatMemory = chatMemoryProvider.get(memoryId);
+
+        chatMemory.add(SystemMessage.from(SystemPrompt));
+
+        UserMessage userMessage = UserMessage.from(message);
+        chatMemory.add(userMessage);
+        List<ChatMessage> sendMessages = chatMemory.messages();
+        return Flux.create(emitter -> {
+            streamingChatModel.chat(sendMessages, new StreamingChatResponseHandler() {
+
+                @Override
+                public void onPartialResponse(String partialResponse) {
+                    emitter.next(partialResponse);
+                }
+
+                @Override
+                public void onCompleteResponse(ChatResponse completeResponse) {
+                    emitter.complete();
+                    AiMessage aiMessage = completeResponse.aiMessage();
+                    chatMemory.add(aiMessage);
+                    //todo 处理tool调用
+                }
+
+
+                @Override
+                public void onError(Throwable error) {
+                    emitter.error(error);
+                }
+            });
+        });
+    }
+
 
     /***
      * 清空会话

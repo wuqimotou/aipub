@@ -7,6 +7,7 @@ import dev.langchain4j.service.AiServices;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import mt.aipub.bot.Waiter;
+import okhttp3.sse.EventSource;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -27,5 +28,6 @@ public class AiTest {
     public void test() {
         System.out.println(waiter.chat("1", "你好"));
     }
+
 
 }

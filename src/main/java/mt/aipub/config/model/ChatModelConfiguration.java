@@ -2,7 +2,9 @@ package mt.aipub.config.model;
 
 import dev.langchain4j.community.model.dashscope.QwenChatModel;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import static mt.aipub.constant.ApiKeyConstant.QWEN_API_KEY;
@@ -24,6 +26,15 @@ public class ChatModelConfiguration {
     @Bean
     public ChatModel qwenChatModel() {
         return OpenAiChatModel.builder()
+                .baseUrl("https://dashscope.aliyuncs.com/compatible-mode/v1")
+                .apiKey(QWEN_API_KEY)
+                .modelName("qwen-plus-latest")
+                .build();
+    }
+
+    @Bean
+    public StreamingChatModel qwenStreamingChatModel() {
+        return OpenAiStreamingChatModel.builder()
                 .baseUrl("https://dashscope.aliyuncs.com/compatible-mode/v1")
                 .apiKey(QWEN_API_KEY)
                 .modelName("qwen-plus-latest")

@@ -1,21 +1,19 @@
 package mt.aipub.bot.impl;
 
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.*;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
-import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import jakarta.annotation.Resource;
-import lombok.AllArgsConstructor;
 import mt.aipub.bot.Waiter;
+import mt.aipub.functionCall.WaiterFunctionCall;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.util.CollectionUtils;
 import reactor.core.publisher.Flux;
 
 import java.util.Collections;
@@ -31,6 +29,7 @@ public class WaiterImpl implements Waiter {
     private StreamingChatModel streamingChatModel;
 
     private static final String SystemPrompt;
+
 
     /***
      * 读取waiter的prompt模板
@@ -69,8 +68,25 @@ public class WaiterImpl implements Waiter {
         ChatResponse chatResponse = chatModel.chat(buildChatRequest(sendMessages));
         AiMessage aiMessage = chatResponse.aiMessage();
         chatMemory.add(aiMessage);
-        //todo 处理tool调用
-        return aiMessage.text();
+        if (!aiMessage.hasToolExecutionRequests()) {
+            return aiMessage.text();
+        } else {
+            //处理tool调用
+            List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
+            List<ToolExecutionResultMessage> toolExecutionResultMessages = WaiterFunctionCall.excuteTools(toolExecutionRequests);
+            if (CollectionUtils.isEmpty(toolExecutionResultMessages)) {
+                return "貌似出了点问题呢！";
+            }
+            toolExecutionResultMessages.forEach(chatMemory::add);
+            List<ChatMessage> secondSendMessages = chatMemory.messages();
+            secondSendMessages.addAll(toolExecutionResultMessages);
+            ChatResponse secondChatResponse = chatModel.chat(secondSendMessages);
+            AiMessage aiMessage2 = secondChatResponse.aiMessage();
+            chatMemory.add(aiMessage2);
+            return aiMessage2.text();
+        }
+
+
     }
 
     /***
@@ -125,8 +141,13 @@ public class WaiterImpl implements Waiter {
     }
 
     private static ChatRequest buildChatRequest(List<ChatMessage> messages) {
+
+        // 获取工具
+        List<ToolSpecification> tools = WaiterFunctionCall.getTools();
+
         return ChatRequest.builder()
                 .messages(messages)
+                .toolSpecifications(tools)
                 .build();
     }
 

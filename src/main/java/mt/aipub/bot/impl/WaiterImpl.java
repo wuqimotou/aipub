@@ -10,6 +10,16 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.input.PromptTemplate;
+import dev.langchain4j.rag.AugmentationRequest;
+import dev.langchain4j.rag.AugmentationResult;
+import dev.langchain4j.rag.DefaultRetrievalAugmentor;
+import dev.langchain4j.rag.RetrievalAugmentor;
+import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.rag.content.injector.DefaultContentInjector;
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.rag.query.Metadata;
+import dev.langchain4j.rag.query.Query;
 import mt.aipub.bot.Waiter;
 import mt.aipub.functionCall.WaiterFunctionCall;
 import org.springframework.core.io.ClassPathResource;
@@ -30,6 +40,8 @@ public class WaiterImpl implements Waiter {
 
     private static final String SystemPrompt;
 
+    private ContentRetriever contentRetriever;
+
 
     /***
      * 读取waiter的prompt模板
@@ -42,10 +54,11 @@ public class WaiterImpl implements Waiter {
             throw new RuntimeException(e);
         }
     }
-    public WaiterImpl(ChatMemoryProvider chatMemoryProvider, ChatModel chatModel, StreamingChatModel streamingChatModel) {
+    public WaiterImpl(ChatMemoryProvider chatMemoryProvider, ChatModel chatModel, StreamingChatModel streamingChatModel, ContentRetriever contentRetriever) {
         this.chatMemoryProvider = chatMemoryProvider;
         this.chatModel = chatModel;
         this.streamingChatModel = streamingChatModel;
+        this.contentRetriever = contentRetriever;
     }
 
     /***
@@ -62,8 +75,19 @@ public class WaiterImpl implements Waiter {
         chatMemory.add(SystemMessage.from(SystemPrompt));
 
         UserMessage  userMessage = UserMessage.from(message);
-        chatMemory.add(userMessage);
         List<ChatMessage> sendMessages = chatMemory.messages();
+
+        // 创建RAG注入器
+        DefaultRetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
+                .contentInjector(DefaultContentInjector.builder()
+                        .promptTemplate(PromptTemplate.from("{{userMessage}}\n\n以下内容供你参考\n{{contents}}"))
+                        .build())
+                .contentRetriever(contentRetriever)
+                .build();
+        AugmentationResult augmentationResult = retrievalAugmentor.augment(new AugmentationRequest(userMessage, Metadata.from(userMessage, memoryId, sendMessages)));
+        ChatMessage chatMessage = augmentationResult.chatMessage();
+        chatMemory.add(chatMessage);
+        sendMessages = chatMemory.messages();
         // 调用大模型
         ChatResponse chatResponse = chatModel.chat(buildChatRequest(sendMessages));
         AiMessage aiMessage = chatResponse.aiMessage();
